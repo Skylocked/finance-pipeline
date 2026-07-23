@@ -1,4 +1,5 @@
 # Import modules
+import sys          # parameterization
 from pyspark.sql.functions import current_timestamp, col
 
 # No need to import from pyspark.sql
@@ -13,10 +14,20 @@ from pyspark.sql.functions import current_timestamp, col
 # 2nd my_spark is the spark cluster or engine name (used to track session in spark engine)
 
 
+# Catch the parameter (and ignore IPython's interactive -f flag)
+if len(sys.argv) > 1 and not sys.argv[1].startswith("-f"): 
+    env_catalog = sys.argv[1]
+    print(f"Running in Job mode. Target catalog: {env_catalog}")
+else:
+    env_catalog = "dev_finance"
+    print(f"Running in Local Dev mode. Defaulting to catalog: {env_catalog}")
+
+
 # Define paths and table names
-source_volume_path = "/Volumes/dev_finance/raw/remittance/"                                     # Where our raw JSON is stored
-target_table = "dev_finance.bronze.exchange_rates"                                              # Where the target database table is
-checkpoint_path = "/Volumes/dev_finance/raw/remittance/_checkpoints/bronze_exchange_rates"      # Where Auto Loader will save its tracking/memory files
+source_volume_path = f"/Volumes/{env_catalog}/raw/remittance/"                                     # Where our raw JSON is stored
+target_table = f"{env_catalog}.bronze.exchange_rates"                                              # Where the target database table is
+checkpoint_path = f"/Volumes/{env_catalog}/raw/remittance/_checkpoints/bronze_exchange_rates"      # Where Auto Loader will save its tracking/memory files
+
 
 # Print stdout message
 print(f"Starting Auto Loader ingestion from: {source_volume_path}")
@@ -43,7 +54,6 @@ raw_stream_df = (
 # spark.readStream returns DataStreamReader object used for streaming
 # sets up  a continuous unbounded listere that waits for new files or messages to arrive indefinitely
 
-
 # Add standard data engineering audit columns to our streaming DataFrame (timesteamp of insert + source table)
 # source_file commented out to bypass the Unity Catalog hidden column bug)
 bronze_df = (
@@ -56,6 +66,7 @@ bronze_df = (
 # Print stdout message for start of write stream into Delta table
 print(f"Writing data to Bronze Delta table: {target_table}")
 
+
 # Write the stream into a Delta Table 
 write_query = (bronze_df.writeStream
     .format("delta")                               # Save as Delta Lake table
@@ -65,8 +76,10 @@ write_query = (bronze_df.writeStream
     .table(target_table)                           # Save into target destination
 )
 
+
 # Wait for the stream to finish its micro-batch
 write_query.awaitTermination()
+
 
 # print stdout message
 print(f"Stream finished. Data written to table: {target_table}")

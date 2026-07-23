@@ -1,22 +1,33 @@
 # Import modules
+import sys          # parameterization
 from pyspark.sql.functions import col, explode, to_json, from_json, current_timestamp
 from pyspark.sql.types import MapType, StringType, DoubleType
 
+
+# Catch the parameter (and ignore IPython's interactive -f flag)
+if len(sys.argv) > 1 and not sys.argv[1].startswith("-f"): 
+    env_catalog = sys.argv[1]
+    print(f"Running in Job mode. Target catalog: {env_catalog}")
+else:
+    env_catalog = "dev_finance"
+    print(f"Running in Local Dev mode. Defaulting to catalog: {env_catalog}")
+
+
 # Ensure the target database schema exists
-spark.sql("CREATE SCHEMA IF NOT EXISTS dev_finance.silver")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {env_catalog}.silver")
 
 
 # Define path and table names
-source_table = "dev_finance.bronze.exchange_rates"
-target_table = "dev_finance.silver.exchange_rates"
-checkpoint_path = "/Volumes/dev_finance/raw/remittance/_checkpoints/silver_exchange_rates"
+source_table = f"{env_catalog}.bronze.exchange_rates"
+target_table = f"{env_catalog}.silver.exchange_rates"
+checkpoint_path = f"/Volumes/{env_catalog}/raw/remittance/_checkpoints/silver_exchange_rates"
 
 # Print stdout message
 print(f"Starting Silver transformation from: {source_table}")
 
 
 # Read stream from bronze table
-bronze_stream_df = spark.readStream.table("dev_finance.bronze.exchange_rates")
+bronze_stream_df = spark.readStream.table(source_table)
 
 
 # Transform data from Bronze to Silver

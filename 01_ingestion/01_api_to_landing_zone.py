@@ -1,18 +1,29 @@
 # Import modules
+import sys          # parameterization
 import requests     # common attributes: status_code, text, headers // common methods: json(), get(), post(), put(), delete(), head(), raise_for_status()
 import json         # common methods: dumps(), dump(), loads(), load() (with s means to string while no s means to file)
 import os
 from datetime import datetime
 
 
+# Catch the parameter (and ignore IPython's interactive -f flag)
+if len(sys.argv) > 1 and not sys.argv[1].startswith("-f"): 
+    env_catalog = sys.argv[1]
+    print(f"Running in Job mode. Target catalog: {env_catalog}")
+else:
+    env_catalog = "dev_finance"
+    print(f"Running in Local Dev mode. Defaulting to catalog: {env_catalog}")
+
+
 # Define our endpoints and storage paths
 api_url = "https://open.er-api.com/v6/latest/USD"
-volume_path = "/Volumes/dev_finance/raw/remittance"
+volume_path = f"/Volumes/{env_catalog}/raw/remittance"
 
 
 # Print initial stdout
 print(f"Starting pipeline...")
 print(f"Calling API: {api_url}")
+
 
 # Fetch the data from the API using .get() method from response package
 # Outputs a response object
@@ -42,7 +53,6 @@ if response.status_code == 200:
         json.dump(data, file)               # dump the data into the file
         
     print(f"Success! Data landed in: {target_file}")    # print stdout
-
 else:
     # If the API is down, tell us exactly what error code it threw
     print(f"Failed! The API returned status code: {response.status_code}")

@@ -1,11 +1,25 @@
-# No need to import because we are using the base Spark SQL module which is pre-imported for us
+# Import modules
+import sys          # parameterization
+# No need to import spark because we are using the base Spark SQL module which is pre-imported for us
+
+
+# Catch the parameter (and ignore IPython's interactive -f flag)
+if len(sys.argv) > 1 and not sys.argv[1].startswith("-f"): 
+    env_catalog = sys.argv[1]
+    print(f"Running in Job mode. Target catalog: {env_catalog}")
+else:
+    env_catalog = "dev_finance"
+    print(f"Running in Local Dev mode. Defaulting to catalog: {env_catalog}")
+
+
 # Ensure target database schema exists
-spark.sql("CREATE SCHEMA IF NOT EXISTS dev_finance.gold")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {env_catalog}.gold")
 
 
 # Define the path and table names
-source_table = 'dev_finance.silver.exchange_rates'
-target_table = 'dev_finance.gold.exchange_rates'
+source_table = f"{env_catalog}.silver.exchange_rates"
+target_table = f"{env_catalog}.gold.exchange_rates"
+
 
 # Print stdout message
 print(f"Starting Gold transformations from: {source_table}")
@@ -45,6 +59,7 @@ gold_df = spark.sql(f"""
 # Print stdout
 print(f"Writing to: {target_table}")
 
+
 # Write data to target table
 (gold_df.write
     .format("delta")                        # use delta format
@@ -52,6 +67,7 @@ print(f"Writing to: {target_table}")
     .option("overwriteSchema", "true")      # anticipation of schema evolution
     .saveAsTable(target_table)
 )
+
 
 # Print stdout message
 print(f"Write finished. Data written to table: {target_table}")
